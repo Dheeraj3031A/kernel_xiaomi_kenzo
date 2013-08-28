@@ -368,8 +368,7 @@ unsigned long shrink_slab(struct shrink_control *shrinkctl,
 					nr_pages_scanned, lru_pages,
 					max_pass, delta, total_scan);
 
-		while (total_scan >= batch_size) {
-
+		while (total_scan >= min_cache_size) {
 			if (shrinker->scan_objects) {
 				unsigned long ret;
 				shrinkctl->nr_to_scan = batch_size;
