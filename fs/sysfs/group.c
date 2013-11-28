@@ -108,13 +108,13 @@ static int internal_create_group(struct kobject *kobj, int update,
 		}
 	} else
 		sd = kobj->sd;
-	sysfs_get(sd);
+	kernfs_get(sd);
 	error = create_files(sd, kobj, grp, update);
 	if (error) {
 		if (grp->name)
 			kernfs_remove(sd);
 	}
-	sysfs_put(sd);
+	kernfs_put(sd);
 	return error;
 }
 
@@ -242,21 +242,23 @@ void sysfs_remove_group(struct kobject *kobj,
 	struct sysfs_dirent *sd;
 
 	if (grp->name) {
-		sd = sysfs_get_dirent(dir_sd, grp->name);
+		sd = kernfs_find_and_get(dir_sd, grp->name);
 		if (!sd) {
 			WARN(!sd, KERN_WARNING
 			     "sysfs group %p not found for kobject '%s'\n",
 			     grp, kobject_name(kobj));
 			return;
 		}
-	} else
-		sd = sysfs_get(dir_sd);
+	} else {
+		sd = dir_sd;
+		kernfs_get(sd);
+	}
 
 	remove_files(sd, kobj, grp);
 	if (grp->name)
 		kernfs_remove(sd);
 
-	sysfs_put(sd);
+	kernfs_put(sd);
 }
 EXPORT_SYMBOL_GPL(sysfs_remove_group);
 
@@ -317,7 +319,7 @@ int sysfs_merge_group(struct kobject *kobj,
 	struct attribute *const *attr;
 	int i;
 
-	dir_sd = sysfs_get_dirent(kobj->sd, grp->name);
+	dir_sd = kernfs_find_and_get(kobj->sd, grp->name);
 	if (!dir_sd)
 		return -ENOENT;
 
@@ -327,7 +329,7 @@ int sysfs_merge_group(struct kobject *kobj,
 		while (--i >= 0)
 			kernfs_remove_by_name(dir_sd, (*--attr)->name);
 	}
-	sysfs_put(dir_sd);
+	kernfs_put(dir_sd);
 
 	return error;
 }
@@ -344,11 +346,11 @@ void sysfs_unmerge_group(struct kobject *kobj,
 	struct sysfs_dirent *dir_sd;
 	struct attribute *const *attr;
 
-	dir_sd = sysfs_get_dirent(kobj->sd, grp->name);
+	dir_sd = kernfs_find_and_get(kobj->sd, grp->name);
 	if (dir_sd) {
 		for (attr = grp->attrs; *attr; ++attr)
 			kernfs_remove_by_name(dir_sd, (*attr)->name);
-		sysfs_put(dir_sd);
+		kernfs_put(dir_sd);
 	}
 }
 EXPORT_SYMBOL_GPL(sysfs_unmerge_group);
@@ -366,12 +368,12 @@ int sysfs_add_link_to_group(struct kobject *kobj, const char *group_name,
 	struct sysfs_dirent *dir_sd;
 	int error = 0;
 
-	dir_sd = sysfs_get_dirent(kobj->sd, group_name);
+	dir_sd = kernfs_find_and_get(kobj->sd, group_name);
 	if (!dir_sd)
 		return -ENOENT;
 
 	error = sysfs_create_link_sd(dir_sd, target, link_name);
-	sysfs_put(dir_sd);
+	kernfs_put(dir_sd);
 
 	return error;
 }
@@ -388,10 +390,10 @@ void sysfs_remove_link_from_group(struct kobject *kobj, const char *group_name,
 {
 	struct sysfs_dirent *dir_sd;
 
-	dir_sd = sysfs_get_dirent(kobj->sd, group_name);
+	dir_sd = kernfs_find_and_get(kobj->sd, group_name);
 	if (dir_sd) {
 		kernfs_remove_by_name(dir_sd, link_name);
-		sysfs_put(dir_sd);
+		kernfs_put(dir_sd);
 	}
 }
 EXPORT_SYMBOL_GPL(sysfs_remove_link_from_group);
