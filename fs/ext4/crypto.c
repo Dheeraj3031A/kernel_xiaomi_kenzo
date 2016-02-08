@@ -483,24 +483,16 @@ uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size)
  */
 static int ext4_d_revalidate(struct dentry *dentry, unsigned int flags)
 {
-	struct dentry *dir;
-	struct ext4_crypt_info *ci;
+	struct inode *dir = d_inode(dentry->d_parent);
+	struct ext4_crypt_info *ci = EXT4_I(dir)->i_crypt_info;
 	int dir_has_key, cached_with_key;
 
-	if (flags & LOOKUP_RCU)
-		return -ECHILD;
-
-	dir = dget_parent(dentry);
-	if (!ext4_encrypted_inode(d_inode(dir))) {
-		dput(dir);
+	if (!ext4_encrypted_inode(dir))
 		return 0;
-	}
-	ci = EXT4_I(d_inode(dir))->i_crypt_info;
 
 	/* this should eventually be an flag in d_flags */
 	cached_with_key = dentry->d_fsdata != NULL;
 	dir_has_key = (ci != NULL);
-	dput(dir);
 
 	/*
 	 * If the dentry was cached without the key, and it is a
@@ -512,7 +504,7 @@ static int ext4_d_revalidate(struct dentry *dentry, unsigned int flags)
 	 * We also fail the validation if the dentry was created with
 	 * the key present, but we no longer have the key, or vice versa.
 	 */
-	if ((!cached_with_key && !(dentry->d_inode)) ||
+	if ((!cached_with_key && d_is_negative(dentry)) ||
 	    (!cached_with_key && dir_has_key) ||
 	    (cached_with_key && !dir_has_key)) {
 #if 0				/* Revalidation debug */
