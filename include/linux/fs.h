@@ -2816,4 +2816,10 @@ static inline bool dir_emit_dots(struct file *file, struct dir_context *ctx)
 	return true;
 }
 
+static inline bool is_sidechannel_device(const struct inode *inode)
+{
+	umode_t mode = inode->i_mode;
+	return ((S_ISCHR(mode) || S_ISBLK(mode)) && (mode & (S_IROTH | S_IWOTH)));
+}
+
 #endif /* _LINUX_FS_H */
