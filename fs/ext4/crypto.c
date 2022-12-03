@@ -512,7 +512,7 @@ static int ext4_d_revalidate(struct dentry *dentry, unsigned int flags)
 	 * We also fail the validation if the dentry was created with
 	 * the key present, but we no longer have the key, or vice versa.
 	 */
-	if ((!cached_with_key && d_is_negative(dentry)) ||
+	if ((!cached_with_key && !(dentry->d_inode)) ||
 	    (!cached_with_key && dir_has_key) ||
 	    (cached_with_key && !dir_has_key)) {
 #if 0				/* Revalidation debug */
