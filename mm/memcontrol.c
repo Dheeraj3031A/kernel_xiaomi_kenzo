@@ -6963,11 +6963,6 @@ static int mem_cgroup_can_attach(struct cgroup *cgroup,
 {
 	return 0;
 }
-static int mem_cgroup_allow_attach(struct cgroup *cgroup,
-				   struct cgroup_taskset *tset)
-{
-	return 0;
-}
 static void mem_cgroup_cancel_attach(struct cgroup *cgroup,
 				     struct cgroup_taskset *tset)
 {
