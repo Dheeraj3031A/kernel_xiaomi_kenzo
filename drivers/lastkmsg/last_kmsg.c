@@ -53,7 +53,8 @@ void pstore_console_show(enum pstore_type_id type_id, struct seq_file *m, void *
 	if (psi->open && psi->open(psi))
 		goto out;
 
-	while ((size = psi->read(&id, &type, &count, &time, &buf, psi)) > 0) {
+	while ((size = psi->read(&id, &type, &count, &time, &buf, &compressed,
+				psi)) > 0) {
 		/*pr_err("ram_console: id %lld, type %d, count %d, size %zx\n", id, type, count,
 		       size);*/
 		if (type == type_id)
