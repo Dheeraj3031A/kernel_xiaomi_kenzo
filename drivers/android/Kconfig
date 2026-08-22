@@ -9,7 +9,7 @@ if ANDROID
 
 config ANDROID_BINDER_IPC
 	bool "Android Binder IPC Driver"
-	depends on MMU
+	depends on MMU && !M68K
 	default n
 	---help---
 	  Binder is used in Android for both communication between processes,
@@ -18,6 +18,18 @@ config ANDROID_BINDER_IPC
 	  This means one Android process can call a method/routine in another
 	  Android process, using Binder to identify, invoke and pass arguments
 	  between said processes.
+
+config ANDROID_BINDERFS
+	bool "Android Binderfs filesystem"
+	depends on ANDROID_BINDER_IPC
+	default n
+	---help---
+	  Binderfs is a pseudo-filesystem for the Android Binder IPC driver
+	  which can be mounted per-ipc namespace allowing to run multiple
+	  instances of Android.
+	  Each binderfs mount initially only contains a binder-control device.
+	  It can be used to dynamically allocate new binder IPC devices via
+	  ioctls.
 
 config ANDROID_BINDER_DEVICES
 	string "Android Binder devices"
@@ -31,18 +43,18 @@ config ANDROID_BINDER_DEVICES
 	  created. Each binder device has its own context manager, and is
 	  therefore logically separated from the other devices.
 
-config ANDROID_BINDER_IPC_32BIT
-	bool
-	depends on !64BIT && ANDROID_BINDER_IPC
-	default y
-	---help---
-	  The Binder API has been changed to support both 32 and 64bit
-	  applications in a mixed environment.
+config BINDER_SHUT_UP
+		bool "Supress Android Binder logging"
 
-	  Enable this to support an old 32-bit Android user-space (v4.4 and
-	  earlier).
+config ANDROID_BINDER_IPC_SELFTEST
+        bool "Android Binder IPC Driver Selftest"
+        depends on ANDROID_BINDER_IPC
+        ---help---
+          This feature allows binder selftest to run.
 
-	  Note that enabling this will break newer Android user-space.
+          Binder selftest checks the allocation and free of binder buffers
+          exhaustively with combinations of various buffer sizes and
+          alignments.
 
 endif # if ANDROID
 
