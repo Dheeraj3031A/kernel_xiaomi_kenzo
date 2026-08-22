@@ -17,6 +17,7 @@
 #include <linux/inet_diag.h>
 #include <linux/xfrm.h>
 #include <linux/audit.h>
+#include <linux/sock_diag.h>
 
 #include "flask.h"
 #include "av_permissions.h"
@@ -76,8 +77,10 @@ static struct nlmsg_perm nlmsg_route_perms[] =
 
 static struct nlmsg_perm nlmsg_tcpdiag_perms[] =
 {
-	{ TCPDIAG_GETSOCK,	NETLINK_TCPDIAG_SOCKET__NLMSG_READ },
-	{ DCCPDIAG_GETSOCK,	NETLINK_TCPDIAG_SOCKET__NLMSG_READ },
+	{ TCPDIAG_GETSOCK,		NETLINK_TCPDIAG_SOCKET__NLMSG_READ },
+	{ DCCPDIAG_GETSOCK,		NETLINK_TCPDIAG_SOCKET__NLMSG_READ },
+	{ SOCK_DIAG_BY_FAMILY,		NETLINK_TCPDIAG_SOCKET__NLMSG_READ },
+	{ SOCK_DESTROY_BACKPORT,	NETLINK_TCPDIAG_SOCKET__NLMSG_WRITE },
 };
 
 static struct nlmsg_perm nlmsg_xfrm_perms[] =
@@ -98,6 +101,13 @@ static struct nlmsg_perm nlmsg_xfrm_perms[] =
 	{ XFRM_MSG_FLUSHPOLICY,	NETLINK_XFRM_SOCKET__NLMSG_WRITE },
 	{ XFRM_MSG_NEWAE,	NETLINK_XFRM_SOCKET__NLMSG_WRITE },
 	{ XFRM_MSG_GETAE,	NETLINK_XFRM_SOCKET__NLMSG_READ  },
+	{ XFRM_MSG_REPORT,	NETLINK_XFRM_SOCKET__NLMSG_READ  },
+	{ XFRM_MSG_MIGRATE,	NETLINK_XFRM_SOCKET__NLMSG_WRITE },
+	{ XFRM_MSG_NEWSADINFO,	NETLINK_XFRM_SOCKET__NLMSG_READ  },
+	{ XFRM_MSG_GETSADINFO,	NETLINK_XFRM_SOCKET__NLMSG_READ  },
+	{ XFRM_MSG_NEWSPDINFO,	NETLINK_XFRM_SOCKET__NLMSG_WRITE },
+	{ XFRM_MSG_GETSPDINFO,	NETLINK_XFRM_SOCKET__NLMSG_READ  },
+	{ XFRM_MSG_MAPPING,	NETLINK_XFRM_SOCKET__NLMSG_READ  },
 };
 
 static struct nlmsg_perm nlmsg_audit_perms[] =
@@ -172,4 +182,44 @@ int selinux_nlmsg_lookup(u16 sclass, u16 nlmsg_type, u32 *perm)
 	}
 
 	return err;
+}
+
+static void nlmsg_set_perm_for_type(u32 perm, u16 type)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(nlmsg_route_perms); i++) {
+		if (nlmsg_route_perms[i].nlmsg_type == type) {
+			nlmsg_route_perms[i].perm = perm;
+			break;
+		}
+	}
+}
+
+/**
+ * Use nlmsg_readpriv as the permission for RTM_GETLINK messages if the
+ * netlink_route_getlink policy capability is set. Otherwise use nlmsg_read.
+ * Similarly, use nlmsg_getneigh for RTM_GETNEIGH and RTM_GETNEIGHTBL if the
+ * netlink_route_getneigh policy capability is set. Otherwise use nlmsg_read.
+ */
+void selinux_nlmsg_init(void)
+{
+	if (selinux_android_netlink_route)
+		nlmsg_set_perm_for_type(NETLINK_ROUTE_SOCKET__NLMSG_READPRIV,
+					RTM_GETLINK);
+	else
+		nlmsg_set_perm_for_type(NETLINK_ROUTE_SOCKET__NLMSG_READ,
+					RTM_GETLINK);
+
+	if (selinux_android_netlink_getneigh) {
+		nlmsg_set_perm_for_type(NETLINK_ROUTE_SOCKET__NLMSG_GETNEIGH,
+					RTM_GETNEIGH);
+		nlmsg_set_perm_for_type(NETLINK_ROUTE_SOCKET__NLMSG_GETNEIGH,
+					RTM_GETNEIGHTBL);
+	} else {
+		nlmsg_set_perm_for_type(NETLINK_ROUTE_SOCKET__NLMSG_READ,
+					RTM_GETNEIGH);
+		nlmsg_set_perm_for_type(NETLINK_ROUTE_SOCKET__NLMSG_READ,
+					RTM_GETNEIGHTBL);
+	}
 }

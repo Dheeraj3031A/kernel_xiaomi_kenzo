@@ -40,6 +40,7 @@
 #include "objsec.h"
 #include "security.h"
 #include "netlabel.h"
+#include "avc.h"
 
 /**
  * selinux_netlbl_sidlookup_cached - Cache a SID lookup
@@ -98,6 +99,32 @@ static struct netlbl_lsm_secattr *selinux_netlbl_sock_genattr(struct sock *sk)
 	sksec->nlbl_secattr = secattr;
 
 	return secattr;
+}
+
+/**
+ * selinux_netlbl_sock_getattr - Get the cached NetLabel secattr
+ * @sk: the socket
+ * @sid: the SID
+ *
+ * Query the socket's cached secattr and if the SID matches the cached value
+ * return the cache, otherwise return NULL.
+ *
+ */
+static struct netlbl_lsm_secattr *selinux_netlbl_sock_getattr(
+							const struct sock *sk,
+							u32 sid)
+{
+	struct sk_security_struct *sksec = sk->sk_security;
+	struct netlbl_lsm_secattr *secattr = sksec->nlbl_secattr;
+
+	if (secattr == NULL)
+		return NULL;
+
+	if ((secattr->flags & NETLBL_SECATTR_SECID) &&
+	    (secattr->attr.secid == sid))
+		return secattr;
+
+	return NULL;
 }
 
 /**
@@ -224,7 +251,7 @@ int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
 		struct sk_security_struct *sksec = sk->sk_security;
 		if (sksec->nlbl_state != NLBL_REQSKB)
 			return 0;
-		secattr = sksec->nlbl_secattr;
+		secattr = selinux_netlbl_sock_getattr(sk, sid);
 	}
 	if (secattr == NULL) {
 		secattr = &secattr_storage;
@@ -410,6 +437,9 @@ int selinux_netlbl_socket_setsockopt(struct socket *sock,
 	     sksec->nlbl_state == NLBL_CONNLABELED)) {
 		netlbl_secattr_init(&secattr);
 		lock_sock(sk);
+		/* call the netlabel function directly as we want to see the
+		 * on-the-wire label that is assigned via the socket's options
+		 * and not the cached netlabel/lsm attributes */
 		rc = netlbl_sock_getattr(sk, &secattr);
 		release_sock(sk);
 		if (rc == 0)
